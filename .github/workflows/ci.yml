@@ -36,15 +36,20 @@ jobs:
 
       # log in to Docker Hub using DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets.
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          # strip any stray whitespace/newlines saved with the secrets
+          DH_USER=$(printf '%s' "$DH_USER" | tr -d '[:space:]')
+          printf '%s' "$DH_TOKEN" | tr -d '[:space:]' | docker login -u "$DH_USER" --password-stdin
 
       # TODO(step-6e): tag and push the image as both :latest and :${{ github.sha }}.
       - name: Tag and push
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          FULL=${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME
+          FULL=$(printf '%s' "$DH_USER" | tr -d '[:space:]')/$IMAGE_NAME
           docker tag $IMAGE_NAME:${{ github.sha }} $FULL:${{ github.sha }}
           docker tag $IMAGE_NAME:${{ github.sha }} $FULL:latest
           docker push $FULL:${{ github.sha }}
