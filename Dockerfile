@@ -13,6 +13,9 @@ WORKDIR /app
 # TODO(step-4b): copy package.json and package-lock.json, then install deps.
 COPY app/package.json app/package-lock.json ./
 RUN npm ci --omit=dev
+# The lockfile is fixed (do not edit), so patch proxy-addr (CVE-2026-90711) in
+# the installed tree only. --no-save leaves package.json/package-lock.json as-is.
+RUN npm install --no-save --omit=dev proxy-addr@2.0.8
 
 # TODO(step-4c): copy the rest of the app source into /app.
 COPY app/ ./
@@ -25,6 +28,13 @@ COPY app/ ./
 FROM node:20.11-slim
 
 WORKDIR /app
+
+# Patch OS packages (gnutls, perl) and remove npm/npx: the runtime only needs
+# `node`, and npm bundles a vulnerable `tar`.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # TODO(step-4e): copy the fully-installed app from the builder stage.
 COPY --from=builder /app /app
